@@ -11,14 +11,14 @@
 
 #include "hmc5883l.h"
 
-double gain = 1090.0; // digital resolution LSB/gauss (default value 1090)
+static double sensitivity = 1090.0; // digital resolution LSB/gauss (default value 1090)
 
 /*
  * \fn void hmc5883l_setup (void)
  * \brief setup measurement mode and sensitivity
  * */
 void
-hmc5883l_setup (void)
+hmc5883l_setup (hmc5883l_measurement_range mr)
 {
   volatile uint8_t buffer[2];
 
@@ -32,13 +32,46 @@ hmc5883l_setup (void)
   twi_write_bytes (HMC5883L_ADDRESS, 2, buffer);
 
   /* write Configuration Register B (01)
-   * sensor field range +/- 1.3 Ga (1090 LSB/gauss)
-   * */
+   * sensor field range */
   buffer[0] = CONF_REG_B;
-  buffer[0] = SENSOR_FIELD_RANGE_1300mGa;
-  twi_write_bytes (HMC5883L_ADDRESS, 2, buffer);
+  switch (mr)
+    {
+    case MR_880_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_880mGa;
+      sensitivity = SENSITIVITY_880mGa;
+      break;
+    case MR_1900_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_1900mGa;
+      sensitivity = SENSITIVITY_1900mGa;
+      break;
+    case MR_2500_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_2500mGa;
+      sensitivity = SENSITIVITY_2500mGa;
+      break;
+    case MR_4000_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_4000mGa;
+      sensitivity = SENSITIVITY_4000mGa;
+      break;
+    case MR_4700_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_4700mGa;
+      sensitivity = SENSITIVITY_4700mGa;
+      break;
+    case MR_5600_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_5600mGa;
+      sensitivity = SENSITIVITY_5600mGa;
+      break;
+    case MR_8100_mGa:
+      buffer[1] = SENSOR_FIELD_RANGE_8100mGa;
+      sensitivity = SENSITIVITY_8100mGa;
+      break;
+    case MR_1300_mGa:
+    default:
+      buffer[1] = SENSOR_FIELD_RANGE_1300mGa;
+      sensitivity = SENSITIVITY_1300mGa;
+      break;
+    }
 
-  gain = SENSITIVITY_1300mGa;
+  twi_write_bytes (HMC5883L_ADDRESS, 2, buffer);
 
   /* write mode Register (02)
    * continuous-measurement mode
@@ -58,13 +91,13 @@ hmc5883l_read_compass_xyz (void)
 {
   volatile uint8_t reg = DATA_XOUT_H;
   volatile uint8_t buffer[6];
-  volatile xyz compass;
+  xyz compass;
 
   twi_read_bytes (HMC5883L_ADDRESS, &reg, 6, buffer);
 
-  compass.x = ((buffer[0] << 8) + buffer[1]) / gain;
-  compass.y = ((buffer[4] << 8) + buffer[5]) / gain;
-  compass.z = ((buffer[2] << 8) + buffer[3]) / gain;
+  compass.x = (double) ((buffer[0] << 8) + buffer[1]) / sensitivity;
+  compass.y = (double) ((buffer[4] << 8) + buffer[5]) / sensitivity;
+  compass.z = (double) ((buffer[2] << 8) + buffer[3]) / sensitivity;
 
   return compass;
 }
